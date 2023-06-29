@@ -1,7 +1,6 @@
 package org.fffd.l23o6.util.strategy.train;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,10 +14,13 @@ public class GSeriesSeatStrategy extends TrainSeatStrategy {
     private final Map<Integer, String> FIRST_CLASS_SEAT_MAP = new HashMap<>();
     private final Map<Integer, String> SECOND_CLASS_SEAT_MAP = new HashMap<>();
 
+    private final Map<Integer, String> NO_SEAT_MAP = new HashMap<>();
+
     private final Map<GSeriesSeatType, Map<Integer, String>> TYPE_MAP = new HashMap<>() {{
         put(GSeriesSeatType.BUSINESS_SEAT, BUSINESS_SEAT_MAP);
         put(GSeriesSeatType.FIRST_CLASS_SEAT, FIRST_CLASS_SEAT_MAP);
         put(GSeriesSeatType.SECOND_CLASS_SEAT, SECOND_CLASS_SEAT_MAP);
+        put(GSeriesSeatType.NO_SEAT, NO_SEAT_MAP);
     }};
 
 
@@ -37,10 +39,14 @@ public class GSeriesSeatStrategy extends TrainSeatStrategy {
         for (String s : Arrays.asList("4车1A","4车1B","4车1C","4车1D","4车2F","4车2A","4车2B","4车2C","4车2D","4车2F","4车3A","4车3B","4车3C","4车3D","4车3F")) {
             SECOND_CLASS_SEAT_MAP.put(counter++, s);
         }
+
+        for (String s : Arrays.asList("无座1", "无座2", "无座3", "无座4", "无座5")) {
+            NO_SEAT_MAP.put(counter++, s);
+        }
         
     }
 
-    public enum GSeriesSeatType implements SeatType {
+    public enum GSeriesSeatType implements TrainSeatStrategy.SeatType {
         BUSINESS_SEAT("商务座"), FIRST_CLASS_SEAT("一等座"), SECOND_CLASS_SEAT("二等座"), NO_SEAT("无座");
         private String text;
         GSeriesSeatType(String text){
@@ -60,18 +66,39 @@ public class GSeriesSeatStrategy extends TrainSeatStrategy {
     }
 
 
-    public @Nullable String allocSeat(int startStationIndex, int endStationIndex, GSeriesSeatType type, boolean[][] seatMap) {
+    @Override
+    public @Nullable String allocSeat(int startStationIndex, int endStationIndex, String type, boolean[][] seatMap) {
         //endStationIndex - 1 = upper bound
         // TODO
-        return null;
+        GSeriesSeatType trueGSeat = GSeriesSeatType.fromString(type);
+        Map<Integer, String> thisTypeMap = TYPE_MAP.get(trueGSeat);
+        return allocSeatFreely(startStationIndex, endStationIndex, thisTypeMap, seatMap);
     }
 
-    public Map<GSeriesSeatType, Integer> getLeftSeatCount(int startStationIndex, int endStationIndex, boolean[][] seatMap) {
+    @Override
+    public Map<SeatType, Integer> getLeftSeatCount(int startStationIndex, int endStationIndex, boolean[][] seatMap) {
         // TODO
-        return null;
+        Map<SeatType, Integer> toRet = new HashMap<>();
+        int sizeOfSeat = seatMap[0].length;
+        for (GSeriesSeatType typeHere: GSeriesSeatType.values()){
+            toRet.put(typeHere, 0);
+        }
+        for (int j = 0; j < sizeOfSeat; j++){
+            if (judgeIfSeatFree(startStationIndex, endStationIndex, j, seatMap)){
+                for (Map.Entry<GSeriesSeatType, Map<Integer, String>> mapHere: TYPE_MAP.entrySet()){
+                    if (mapHere.getValue().get(j) != null){
+                        toRet.replace(mapHere.getKey(), toRet.get(mapHere.getKey()) + 1);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return toRet;
     }
 
+    @Override
     public boolean[][] initSeatMap(int stationCount) {
-        return new boolean[stationCount - 1][BUSINESS_SEAT_MAP.size() + FIRST_CLASS_SEAT_MAP.size() + SECOND_CLASS_SEAT_MAP.size()];
+        return new boolean[stationCount - 1][BUSINESS_SEAT_MAP.size() + FIRST_CLASS_SEAT_MAP.size() + SECOND_CLASS_SEAT_MAP.size() + NO_SEAT_MAP.size()];
     }
 }

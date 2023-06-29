@@ -12,10 +12,12 @@ import org.fffd.l23o6.exception.BizError;
 import org.fffd.l23o6.pojo.entity.OrderEntity;
 import org.fffd.l23o6.pojo.entity.RouteEntity;
 import org.fffd.l23o6.pojo.entity.TrainEntity;
+import org.fffd.l23o6.pojo.enum_.TrainType;
 import org.fffd.l23o6.pojo.vo.order.OrderVO;
 import org.fffd.l23o6.service.OrderService;
-import org.fffd.l23o6.util.strategy.train.GSeriesSeatStrategy;
-import org.fffd.l23o6.util.strategy.train.KSeriesSeatStrategy;
+import org.fffd.l23o6.util.strategy.train.TrainSeatStrategy;
+import org.fffd.l23o6.util.strategy.trainStrategyFactory.GSeriesStrategyFactory;
+import org.fffd.l23o6.util.strategy.trainStrategyFactory.KSeriesStrategyFactory;
 import org.springframework.stereotype.Service;
 
 import io.github.lyc8503.spring.starter.incantation.exception.BizException;
@@ -37,16 +39,13 @@ public class OrderServiceImpl implements OrderService {
         int startStationIndex = route.getStationIds().indexOf(fromStationId);
         int endStationIndex = route.getStationIds().indexOf(toStationId);
         String seat = null;
-        switch (train.getTrainType()) {
-            case HIGH_SPEED:
-                seat = GSeriesSeatStrategy.INSTANCE.allocSeat(startStationIndex, endStationIndex,
-                        GSeriesSeatStrategy.GSeriesSeatType.fromString(seatType), train.getSeats());
-                break;
-            case NORMAL_SPEED:
-                seat = KSeriesSeatStrategy.INSTANCE.allocSeat(startStationIndex, endStationIndex,
-                        KSeriesSeatStrategy.KSeriesSeatType.fromString(seatType), train.getSeats());
-                break;
+
+        TrainSeatStrategy seatStrategy = new GSeriesStrategyFactory().getTrainSeatStrategy();
+
+        if (train.getTrainType().equals(TrainType.NORMAL_SPEED)){
+            seatStrategy = new KSeriesStrategyFactory().getTrainSeatStrategy();
         }
+        seat = seatStrategy.allocSeat(startStationIndex, endStationIndex, seatType, train.getSeats());
         if (seat == null) {
             throw new BizException(BizError.OUT_OF_SEAT);
         }
@@ -103,6 +102,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // TODO: refund user's money and credits if needed
+        // TODO:记得把锁定的座位还回去！可以调用TrainSeatStrategy里的deallocSeat静态方法
 
         order.setStatus(OrderStatus.CANCELLED);
         orderDao.save(order);
