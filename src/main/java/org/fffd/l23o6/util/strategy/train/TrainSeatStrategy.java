@@ -1,11 +1,15 @@
 package org.fffd.l23o6.util.strategy.train;
 
+import io.github.lyc8503.spring.starter.incantation.exception.BizException;
+import io.github.lyc8503.spring.starter.incantation.exception.CommonErrorType;
 import jakarta.annotation.Nullable;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public abstract class TrainSeatStrategy {
 
+    protected final Map<String, Integer> DESCRIPTION_MAP = new HashMap<>();
     public interface SeatType {
         public String getText();
     }
@@ -72,5 +76,18 @@ public abstract class TrainSeatStrategy {
             }
         }
         return null;
+    }
+
+
+    /**
+     * 这个方法依赖于实例，通过描述得到具体的id从而进行进一步的分配解除
+     * */
+    public void deallocSeatByDescription(int startStationIdx, int endStationIdx, String description, boolean[][] seatMap) {
+        Integer getInt = DESCRIPTION_MAP.get(description);
+        if (getInt == null){
+            throw new BizException(CommonErrorType.ILLEGAL_ARGUMENTS, "座位描述有误");
+        }
+        int seatId = getInt;
+        allocSeatById(startStationIdx, endStationIdx, seatId, seatMap);
     }
 }

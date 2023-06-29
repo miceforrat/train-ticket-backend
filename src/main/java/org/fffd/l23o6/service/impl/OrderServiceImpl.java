@@ -102,8 +102,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // TODO: refund user's money and credits if needed
-        // TODO:记得把锁定的座位还回去！可以调用TrainSeatStrategy里的deallocSeat静态方法
-
+        // TODO:记得把锁定的座位还回去！可以调用TrainSeatStrategy里的deallocSeatByDescription方法，这个方法依赖于一个实例
         order.setStatus(OrderStatus.CANCELLED);
         orderDao.save(order);
     }
