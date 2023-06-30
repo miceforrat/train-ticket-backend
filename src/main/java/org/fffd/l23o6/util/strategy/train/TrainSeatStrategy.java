@@ -17,7 +17,7 @@ public abstract class TrainSeatStrategy {
     /**
      * 解除对座位的占用，参数顾名思义
      **/
-    public static void deallocSeat(int startStationIdx, int endStationIdx, int seatId, boolean seats[][]){
+    public static void deallocSeatById(int startStationIdx, int endStationIdx, int seatId, boolean seats[][]){
         for (int i = startStationIdx; i < endStationIdx; i++){
             seats[i][seatId] = false;
         }
@@ -88,6 +88,8 @@ public abstract class TrainSeatStrategy {
             throw new BizException(CommonErrorType.ILLEGAL_ARGUMENTS, "座位描述有误");
         }
         int seatId = getInt;
-        allocSeatById(startStationIdx, endStationIdx, seatId, seatMap);
+        deallocSeatById(startStationIdx, endStationIdx, seatId, seatMap);
     }
+
+
 }

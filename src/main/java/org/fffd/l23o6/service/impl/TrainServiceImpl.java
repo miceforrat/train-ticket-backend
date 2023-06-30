@@ -62,13 +62,13 @@ public class TrainServiceImpl implements TrainService {
 
             List<TrainVO> toRet = new ArrayList<>();
 
-            int startTimestamp = -1,endTimestamp = -1;
             for (TrainEntity trainHere: byDate){
                 long curRouteId = trainHere.getRouteId();
                 List<Long> stations = routeDao.findById(curRouteId).get().getStationIds();
                 List<Date> departureTimes = trainHere.getDepartureTimes();
                 List<Date> arrivalTimes = trainHere.getArrivalTimes();
 
+                int startTimestamp = -1,endTimestamp = -1;
                 Date departureTime = new Date();
                 Date arrivalTime = new Date();
 
@@ -78,7 +78,6 @@ public class TrainServiceImpl implements TrainService {
                     if (stationIdHere == startStationId){
                         startTimestamp = i ;
                         departureTime = departureTimes.get(i);
-
                         if (departureTime.before(dayStart) || departureTime.after(dayEnd)){
                             break;
                         }
@@ -118,20 +117,7 @@ public class TrainServiceImpl implements TrainService {
                             infos.add(toAddTicketInfo);
                         }
                     }
-//                    if (trainHere.getTrainType() == TrainType.NORMAL_SPEED) {
-//                        Map<TrainSeatStrategy.SeatType, Integer> getKCnt
-//                                = KSeriesSeatStrategy.INSTANCE.getLeftSeatCount(startTimestamp, endTimestamp, trainHere.getSeats());
-//                        for (KSeriesSeatStrategy.KSeriesSeatType typeHere: KSeriesSeatStrategy.KSeriesSeatType.values()){
-//                            String KtypeStr = typeHere.getText();
-//                            int Kcnt = getKCnt.getOrDefault(typeHere, 0);
-//                            if (Kcnt > 0){
-//                                int priceK = KSeriesTicketPriceStrategy.INSTANCE.getPrice(startTimestamp, endTimestamp, KtypeStr);
-//                                TicketInfo toAddTicketInfo = new TicketInfo(KtypeStr, Kcnt, priceK);
-//                                infos.add(toAddTicketInfo);
-//
-//                            }
-//                        }
-//                    }
+
                     toAdd.setTicketInfo(infos);
                     toRet.add(toAdd);
                 }
