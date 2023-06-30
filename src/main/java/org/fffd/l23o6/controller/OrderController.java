@@ -46,7 +46,8 @@ public class OrderController {
 
         switch (request.getStatus()) {
             case PAID:
-                orderService.payOrder(orderId);
+                //TODO 前端需要获得是否使用积分
+                orderService.payOrder(orderId,true);
                 break;
             case CANCELLED:
                 orderService.cancelOrder(orderId);

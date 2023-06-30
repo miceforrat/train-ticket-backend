@@ -10,5 +10,6 @@ public interface OrderService {
     OrderVO getOrder(Long id);
 
     void cancelOrder(Long id);
-    void payOrder(Long id);
+    void payOrder(Long id, boolean useCredit);
+    int getPrice(Long trainId,Long departureStationId,Long arrivalStationId,String seatDescription);
 }

@@ -35,27 +35,32 @@ public class KSeriesSeatStrategy extends TrainSeatStrategy {
         int counter = 0;
 
         for (String s : Arrays.asList("软卧1号上铺", "软卧2号下铺", "软卧3号上铺", "软卧4号上铺", "软卧5号上铺", "软卧6号下铺", "软卧7号上铺", "软卧8号上铺")) {
-            DESCRIPTION_MAP.put(s, counter);
+            DESCRIPTION_ID_MAP.put(s, counter);
+            SEATID_TYPE_MAP.put(counter, KSeriesSeatType.SOFT_SLEEPER_SEAT);
             SOFT_SLEEPER_SEAT_MAP.put(counter++, s);
         }
 
         for (String s : Arrays.asList("硬卧1号上铺", "硬卧2号中铺", "硬卧3号下铺", "硬卧4号上铺", "硬卧5号中铺", "硬卧6号下铺", "硬卧7号上铺", "硬卧8号中铺", "硬卧9号下铺", "硬卧10号上铺", "硬卧11号中铺", "硬卧12号下铺")) {
-            DESCRIPTION_MAP.put(s, counter);
+            DESCRIPTION_ID_MAP.put(s, counter);
+            SEATID_TYPE_MAP.put(counter, KSeriesSeatType.HARD_SLEEPER_SEAT);
             HARD_SLEEPER_SEAT_MAP.put(counter++, s);
         }
 
         for (String s : Arrays.asList("1车1座", "1车2座", "1车3座", "1车4座", "1车5座", "1车6座", "1车7座", "1车8座", "2车1座", "2车2座", "2车3座", "2车4座", "2车5座", "2车6座", "2车7座", "2车8座")) {
-            DESCRIPTION_MAP.put(s, counter);
+            DESCRIPTION_ID_MAP.put(s, counter);
+            SEATID_TYPE_MAP.put(counter, KSeriesSeatType.SOFT_SEAT);
             SOFT_SEAT_MAP.put(counter++, s);
         }
 
         for (String s : Arrays.asList("3车1座", "3车2座", "3车3座", "3车4座", "3车5座", "3车6座", "3车7座", "3车8座", "3车9座", "3车10座", "4车1座", "4车2座", "4车3座", "4车4座", "4车5座", "4车6座", "4车7座", "4车8座", "4车9座", "4车10座")) {
-            DESCRIPTION_MAP.put(s, counter);
+            DESCRIPTION_ID_MAP.put(s, counter);
+            SEATID_TYPE_MAP.put(counter, KSeriesSeatType.HARD_SEAT);
             HARD_SEAT_MAP.put(counter++, s);
         }
 
         for (String s : Arrays.asList("无座1", "无座2", "无座3", "无座4", "无座5", "无座6", "无座7", "无座8", "无座9", "无座10")) {
-            DESCRIPTION_MAP.put(s, counter);
+            DESCRIPTION_ID_MAP.put(s, counter);
+            SEATID_TYPE_MAP.put(counter, KSeriesSeatType.NO_SEAT);
             NO_SEAT_MAP.put(counter++, s);
         }
     }
@@ -103,12 +108,17 @@ public class KSeriesSeatStrategy extends TrainSeatStrategy {
         }
         for (int j = 0 ; j < sizeOfSeat; j++){
             if (judgeIfSeatFree(startStationIndex, endStationIndex, j, seatMap)){
-                for (Map.Entry<KSeriesSeatType, Map<Integer, String>> mapHere: TYPE_MAP.entrySet()){
-                    if (mapHere.getValue().get(j) != null){
-                        toRet.replace(mapHere.getKey(), toRet.get(mapHere.getKey()) + 1);
-                        break;
-                    }
+//                for (Map.Entry<KSeriesSeatType, Map<Integer, String>> mapHere: TYPE_MAP.entrySet()){
+//                    if (mapHere.getValue().get(j) != null){
+//                        toRet.replace(mapHere.getKey(), toRet.get(mapHere.getKey()) + 1);
+//                        break;
+//                    }
+//                }
+                SeatType getType = SEATID_TYPE_MAP.get(j);
+                if (getType == null){
+                    throw new BizException(CommonErrorType.UNKNOWN_ERROR, "座位类型未初始化");
                 }
+                toRet.replace(getType, toRet.get(getType) + 1);
             }
         }
         return toRet;
