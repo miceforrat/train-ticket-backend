@@ -10,11 +10,13 @@ import org.fffd.l23o6.pojo.entity.UserEntity;
 import org.fffd.l23o6.service.UserService;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserDao userDao;
-
     @Override
     public void register(String username, String password, String name, String idn, String phone, String type) {
         UserEntity user = userDao.findByUsername(username);
@@ -24,7 +26,9 @@ public class UserServiceImpl implements UserService {
         }
 
         userDao.save(UserEntity.builder().username(username).password(BCrypt.hashpw(password))
-                .name(name).idn(idn).phone(phone).type(type).build());
+                .name(name).idn(idn).phone(phone).type(type).credit(0).build());
+
+
     }
 
     @Override
@@ -47,5 +51,14 @@ public class UserServiceImpl implements UserService {
             throw new BizException(CommonErrorType.ILLEGAL_ARGUMENTS, "用户不存在");
         }
         userDao.save(user.setIdn(idn).setName(name).setPhone(phone).setType(type));
+    }
+
+    @Override
+    public void editCredit(Long userId, int credit) {
+        UserEntity user = userDao.findById(userId).get();
+        if(user == null){
+            throw new BizException(CommonErrorType.ILLEGAL_ARGUMENTS, "用户不存在");
+        }
+        userDao.save(user.setCredit(credit));
     }
 }

@@ -9,7 +9,8 @@ import java.util.Map;
 
 public abstract class TrainSeatStrategy {
 
-    protected final Map<String, Integer> DESCRIPTION_MAP = new HashMap<>();
+    protected final Map<String, Integer> DESCRIPTION_ID_MAP = new HashMap<>();
+    protected final Map<Integer, SeatType> SEATID_TYPE_MAP = new HashMap<>();
     public interface SeatType {
         public String getText();
     }
@@ -83,12 +84,25 @@ public abstract class TrainSeatStrategy {
      * 这个方法依赖于实例，通过描述得到具体的id从而进行进一步的分配解除
      * */
     public void deallocSeatByDescription(int startStationIdx, int endStationIdx, String description, boolean[][] seatMap) {
-        Integer getInt = DESCRIPTION_MAP.get(description);
+        Integer getInt = DESCRIPTION_ID_MAP.get(description);
         if (getInt == null){
             throw new BizException(CommonErrorType.ILLEGAL_ARGUMENTS, "座位描述有误");
         }
         int seatId = getInt;
         deallocSeatById(startStationIdx, endStationIdx, seatId, seatMap);
+    }
+
+    /**
+     * 根据车座描述得到具体的车座类型
+     * */
+    public Integer findSeatIdByDescription(String description){
+        Integer seatId = DESCRIPTION_ID_MAP.get(description);
+        return seatId;
+    }
+    public String findSeatTypeByDescription(String description){
+        Integer seatId = DESCRIPTION_ID_MAP.get(description);
+        String seatType = SEATID_TYPE_MAP.get(seatId).getText();
+        return seatType;
     }
 
 

@@ -1,6 +1,8 @@
 package org.fffd.l23o6.service.impl;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.fffd.l23o6.dao.OrderDao;
@@ -16,9 +18,13 @@ import org.fffd.l23o6.pojo.entity.TrainEntity;
 import org.fffd.l23o6.pojo.enum_.TrainType;
 import org.fffd.l23o6.pojo.vo.order.OrderVO;
 import org.fffd.l23o6.service.OrderService;
+import org.fffd.l23o6.util.strategy.credit.CreditStrategy;
+import org.fffd.l23o6.util.strategy.train.GSeriesSeatStrategy;
+import org.fffd.l23o6.util.strategy.train.KSeriesSeatStrategy;
 import org.fffd.l23o6.util.strategy.train.TrainSeatStrategy;
 import org.fffd.l23o6.util.strategy.trainStrategyFactory.GSeriesStrategyFactory;
 import org.fffd.l23o6.util.strategy.trainStrategyFactory.KSeriesStrategyFactory;
+import org.fffd.l23o6.util.strategy.trainStrategyFactory.TrainStrategyFactory;
 import org.springframework.stereotype.Service;
 
 import io.github.lyc8503.spring.starter.incantation.exception.BizException;
@@ -31,6 +37,8 @@ public class OrderServiceImpl implements OrderService {
     private final UserDao userDao;
     private final TrainDao trainDao;
     private final RouteDao routeDao;
+
+
 
     public Long createOrder(String username, Long trainId, Long fromStationId, Long toStationId, String seatType,
             Long seatNumber) {
@@ -51,7 +59,7 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException(BizError.OUT_OF_SEAT);
         }
         OrderEntity order = OrderEntity.builder().trainId(trainId).userId(userId).seat(seat)
-                .status(OrderStatus.PENDING_PAYMENT).arrivalStationId(toStationId).departureStationId(fromStationId)
+                .status(OrderStatus.PENDING_PAYMENT).arrivalStationId(toStationId).departureStationId(fromStationId).price(getPrice(trainId,fromStationId,toStationId,seat))
                 .build();
         train.setUpdatedAt(null);// force it to update
         trainDao.save(train);
@@ -102,24 +110,101 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException(BizError.ILLEAGAL_ORDER_STATUS);
         }
 
-        // TODO: refund user's money and credits if needed
-        // TODO:记得把锁定的座位还回去！可以调用TrainSeatStrategy里的deallocSeatByDescription方法，这个方法依赖于一个实例
+        TrainEntity train = trainDao.findById(order.getTrainId()).get();
+        RouteEntity route = routeDao.findById(train.getRouteId()).get();
+        int startStationIndex = 0;
+        int endStationIndex = 0;
+
+        for(int i = 0 ; i < route.getStationIds().size();i++){
+            if (Objects.equals(route.getStationIds().get(i), order.getDepartureStationId())) {
+                startStationIndex = i;
+            }
+            if(Objects.equals(route.getStationIds().get(i), order.getArrivalStationId() )){
+                endStationIndex = i;
+            }
+        }
+
+        int seatId = -1;
+        if(train.getTrainType()==TrainType.HIGH_SPEED){
+            GSeriesStrategyFactory gSeriesStrategyFactory = new GSeriesStrategyFactory();
+            seatId = gSeriesStrategyFactory.getTrainSeatStrategy().findSeatIdByDescription(order.getSeat()).intValue();
+        }else if(train.getTrainType()==TrainType.NORMAL_SPEED){
+            KSeriesStrategyFactory kSeriesStrategyFactory = new KSeriesStrategyFactory();
+            seatId = kSeriesStrategyFactory.getTrainSeatStrategy().findSeatIdByDescription(order.getSeat()).intValue();
+        }
+
+        TrainSeatStrategy.deallocSeatById(startStationIndex, endStationIndex, seatId, train.getSeats());
+        train.setUpdatedAt(null);
+        trainDao.save(train);
         order.setStatus(OrderStatus.CANCELLED);
+
         orderDao.save(order);
     }
 
-    public void payOrder(Long id) {
+    public void payOrder(Long id, boolean useCredit) {
         OrderEntity order = orderDao.findById(id).get();
 
         if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
             throw new BizException(BizError.ILLEAGAL_ORDER_STATUS);
         }
 
-        // TODO: use payment strategy to pay!
-        // TODO: update user's credits, so that user can get discount next time
+        int moneyToPay = order.getPrice();
 
+        // TODO: use payment strategy to pay!
+        if(useCredit){
+            CreditStrategy creditStrategy = new CreditStrategy();
+            UserEntity user = userDao.findById(order.getUserId()).get();
+            double disCount = creditStrategy.getDiscount(user.getCredit());
+            //System.err.println(disCount);
+            if(disCount > 0.0){
+                user.setCredit(0);
+                userDao.save(user);
+                moneyToPay = moneyToPay - (int)(disCount*moneyToPay);
+            }
+            //System.err.println(moneyToPay);
+        }
+
+
+        //TODO: 添加付款
+
+        UserEntity user = userDao.findById(order.getUserId()).get();
+        user.setCredit(user.getCredit()+ moneyToPay*5);
+        userDao.save(user);
         order.setStatus(OrderStatus.COMPLETED);
         orderDao.save(order);
+        //System.err.println(userDao.findById(order.getUserId()).get().getCredit());
+    }
+
+
+    public int getPrice(Long trainId,Long departureStationId,Long arrivalStationId,String seatDescription){
+        int price = 0;
+        TrainEntity train = trainDao.findById(trainId).get();
+        RouteEntity route = routeDao.findById(train.getRouteId()).get();
+        int startStationIndex = 0;
+        int endStationIndex = 0;
+
+        for(int i = 0 ; i < route.getStationIds().size();i++){
+            if (Objects.equals(route.getStationIds().get(i), departureStationId )) {
+                startStationIndex = i;
+            }
+            if(Objects.equals(route.getStationIds().get(i), arrivalStationId )){
+                endStationIndex = i;
+            }
+        }
+
+        String seatType;
+        if(train.getTrainType()==TrainType.HIGH_SPEED){
+            seatType = GSeriesSeatStrategy.INSTANCE.findSeatTypeByDescription(seatDescription);
+
+            GSeriesStrategyFactory gSeriesStrategyFactory = new GSeriesStrategyFactory();
+            price = gSeriesStrategyFactory.getTicketPriceStrategy().getPrice(startStationIndex,endStationIndex,seatType);
+        }else if(train.getTrainType()==TrainType.NORMAL_SPEED){
+            seatType = KSeriesSeatStrategy.INSTANCE.findSeatTypeByDescription(seatDescription);
+
+            KSeriesStrategyFactory kSeriesStrategyFactory = new KSeriesStrategyFactory();
+            price = kSeriesStrategyFactory.getTicketPriceStrategy().getPrice(startStationIndex,endStationIndex,seatType);
+        }
+        return  price;
     }
 
 }

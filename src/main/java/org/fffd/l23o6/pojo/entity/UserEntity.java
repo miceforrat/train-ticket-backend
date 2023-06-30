@@ -38,7 +38,6 @@ public class UserEntity {
     private String type;
     private String idn;
     private Integer credit;
-
     @CreationTimestamp
     private Date createdAt;
 
