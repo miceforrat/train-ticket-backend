@@ -27,7 +27,8 @@ public class OrderController {
     @PostMapping("order")
     public CommonResponse<OrderIdVO> createOrder(@Valid @RequestBody CreateOrderRequest request) {
         StpUtil.checkLogin();
-        return CommonResponse.success(new OrderIdVO(orderService.createOrder(StpUtil.getLoginIdAsString(), request.getTrainId(), request.getStartStationId(), request.getEndStationId(), request.getSeatType(), null)));
+        return CommonResponse.success(new OrderIdVO(orderService.createOrder(StpUtil.getLoginIdAsString(), request.getTrainId(),
+                request.getStartStationId(), request.getEndStationId(), request.getSeatType())));
     }
 
     @GetMapping("order")
@@ -47,7 +48,7 @@ public class OrderController {
         switch (request.getStatus()) {
             case PAID:
                 //TODO 前端需要获得是否使用积分
-                orderService.payOrder(orderId,true);
+                orderService.payOrder(orderId,request.getPay_by_credit());
                 break;
             case CANCELLED:
                 orderService.cancelOrder(orderId);

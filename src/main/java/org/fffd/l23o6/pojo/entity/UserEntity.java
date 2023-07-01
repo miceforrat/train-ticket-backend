@@ -10,6 +10,7 @@ import lombok.experimental.Accessors;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.validator.constraints.Length;
 
 import java.util.Date;
 
@@ -38,6 +39,7 @@ public class UserEntity {
     private String type;
     private String idn;
     private Integer credit;
+    private String role;
     @CreationTimestamp
     private Date createdAt;
 

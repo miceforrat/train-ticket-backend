@@ -40,8 +40,7 @@ public class OrderServiceImpl implements OrderService {
 
 
 
-    public Long createOrder(String username, Long trainId, Long fromStationId, Long toStationId, String seatType,
-            Long seatNumber) {
+    public Long createOrder(String username, Long trainId, Long fromStationId, Long toStationId, String seatType) {
         Long userId = userDao.findByUsername(username).getId();
         TrainEntity train = trainDao.findById(trainId).get();
         RouteEntity route = routeDao.findById(train.getRouteId()).get();
@@ -59,7 +58,8 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException(BizError.OUT_OF_SEAT);
         }
         OrderEntity order = OrderEntity.builder().trainId(trainId).userId(userId).seat(seat)
-                .status(OrderStatus.PENDING_PAYMENT).arrivalStationId(toStationId).departureStationId(fromStationId).price(getPrice(trainId,fromStationId,toStationId,seat))
+                .status(OrderStatus.PENDING_PAYMENT).arrivalStationId(toStationId).departureStationId(fromStationId)
+                .price(getPrice(trainId,fromStationId,toStationId,seat))
                 .build();
         train.setUpdatedAt(null);// force it to update
         trainDao.save(train);
@@ -100,6 +100,7 @@ public class OrderServiceImpl implements OrderService {
                 .endStationId(order.getArrivalStationId())
                 .departureTime(train.getDepartureTimes().get(startIndex))
                 .arrivalTime(train.getArrivalTimes().get(endIndex))
+                .price(order.getPrice())
                 .build();
     }
 
@@ -149,18 +150,20 @@ public class OrderServiceImpl implements OrderService {
         }
 
         int moneyToPay = order.getPrice();
-
+        System.err.println(useCredit);
         // TODO: use payment strategy to pay!
         if(useCredit){
             CreditStrategy creditStrategy = new CreditStrategy();
             UserEntity user = userDao.findById(order.getUserId()).get();
-            double disCount = creditStrategy.getDiscount(user.getCredit());
-            //System.err.println(disCount);
-            if(disCount > 0.0){
-                user.setCredit(0);
-                userDao.save(user);
-                moneyToPay = moneyToPay - (int)(disCount*moneyToPay);
+
+            moneyToPay -= creditStrategy.getReducedMoney(user.getCredit());
+            if (moneyToPay < 0){
+                moneyToPay = 0;
             }
+            //System.err.println(disCount);
+            user.setCredit(0);
+            userDao.save(user);
+
             //System.err.println(moneyToPay);
         }
 
@@ -168,7 +171,7 @@ public class OrderServiceImpl implements OrderService {
         //TODO: 添加付款
 
         UserEntity user = userDao.findById(order.getUserId()).get();
-        user.setCredit(user.getCredit()+ moneyToPay*5);
+        user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), moneyToPay));
         userDao.save(user);
         order.setStatus(OrderStatus.COMPLETED);
         orderDao.save(order);

@@ -13,4 +13,8 @@ public class PatchOrderRequest {
     @Schema(description = "订单状态", required = true)
     @NotNull
     private OrderStatus status;
+
+    @Schema(description = "使用订单支付", required = true)
+    @NotNull
+    private Boolean pay_by_credit;
 }

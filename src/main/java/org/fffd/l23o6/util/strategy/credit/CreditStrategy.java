@@ -4,30 +4,61 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class CreditStrategy {
-    private final Integer[] key = {1000,3000,10000,50000};
-    private Map<Integer, Double> discountTable;
-    public CreditStrategy() {
-        discountTable = new HashMap<Integer, Double>();
 
+    private Map<Integer, Double> discountTable =new HashMap<Integer, Double>();;
+    private Map<Integer, Double> basicPrice = new HashMap<Integer, Double>();;
+
+    private final int moneyToCreditRate = 5;
+
+    int firstStandard = 1000;
+    double firstRate = 0.005;
+
+    int secondStandard = 3000;
+    double secondRate = 0.01;
+
+    int thirdStandard = 10000;
+    double thirdRate = 0.015;
+
+    int fourthStandard = 50000;
+    double fourthRate = 0.02;
+
+    double fifthRate = 0.025;
+
+    private final Integer[] key = {firstStandard,secondStandard,thirdStandard,fourthStandard};
+    public CreditStrategy() {
+
+        double curBasic = firstStandard * firstRate;
         // 添加折扣表中的规则
-        discountTable.put(1000, 0.1);
-        discountTable.put(3000, 0.15);
-        discountTable.put(10000, 0.2);
-        discountTable.put(50000, 0.3);
+        discountTable.put(firstStandard, secondRate);
+        basicPrice.put(firstStandard, curBasic);
+
+        curBasic += (secondStandard-firstStandard) * secondRate;
+        discountTable.put(secondStandard, thirdRate);
+        basicPrice.put(secondStandard, curBasic);
+
+        curBasic += (thirdStandard - secondStandard) * thirdRate;
+        discountTable.put(thirdStandard, fourthRate);
+        basicPrice.put(thirdStandard, curBasic);
+
+        curBasic += (fourthStandard - thirdStandard) * fourthRate;
+        discountTable.put(fourthStandard, fifthRate);
+        basicPrice.put(fourthStandard, curBasic);
     }
 
-    public double getDiscount(int mileagePoints) {
-        double discount = 0.0;
-
+    public int getReducedMoney(int credit) {
+//        double discount = 0.0;
         // 遍历折扣表中的规则，找到符合条件的最高折扣
-        for (int i = 0 ; i < 4;i++) {
-            if (mileagePoints >= key[i]) {
-                discount = discountTable.getOrDefault(key[i],0.0);
-            } else {
-                break;
+        for (int i = 3 ; i >= 0;i--) {
+            if (credit >= key[i]) {
+//                discount = discountTable.getOrDefault(key[i],0.0);
+                return (int)(basicPrice.get(key[i]) + (credit - key[i]) * discountTable.get(key[i]));
             }
         }
 
-        return discount;
+        return (int)(credit * firstRate);
+    }
+
+    public int getNewCredit(int before, int truePay){
+        return before+ truePay * moneyToCreditRate;
     }
 }
