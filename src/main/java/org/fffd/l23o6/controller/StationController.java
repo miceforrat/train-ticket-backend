@@ -1,6 +1,8 @@
 package org.fffd.l23o6.controller;
 
 import java.util.List;
+
+import cn.dev33.satoken.annotation.SaCheckRole;
 import io.github.lyc8503.spring.starter.incantation.pojo.CommonResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class StationController {
         return CommonResponse.success(stationService.getStation(stationId));
     }
 
+    @SaCheckRole("routeAdmin")
     @PostMapping("admin/station")
     public CommonResponse<?> addStation(@Valid @RequestBody AddStationRequest request) {
         // Throws BizException if add failed.
@@ -41,6 +44,7 @@ public class StationController {
         return CommonResponse.success();
     }
 
+    @SaCheckRole("routeAdmin")
     @PutMapping("admin/station/{stationId}")
     public CommonResponse<?> editStation(@PathVariable("stationId") Long stationId, @Valid @RequestBody AddStationRequest request) {
         stationService.editStation(stationId, request.getName());

@@ -24,6 +24,7 @@ public class UserController {
         userService.login(request.getUsername(), request.getPassword());
 
         StpUtil.login(request.getUsername());
+
         return CommonResponse.success();
     }
 

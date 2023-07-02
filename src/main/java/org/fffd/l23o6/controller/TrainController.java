@@ -1,6 +1,8 @@
 package org.fffd.l23o6.controller;
 
 import java.util.List;
+
+import cn.dev33.satoken.annotation.SaCheckRole;
 import io.github.lyc8503.spring.starter.incantation.pojo.CommonResponse;
 
 import org.fffd.l23o6.pojo.vo.train.AddTrainRequest;
@@ -35,11 +37,13 @@ public class TrainController {
         return CommonResponse.success(trainService.listTrains(request.getStartStationId(), request.getEndStationId(), request.getDate()));
     }
 
+
     @GetMapping("train/{trainId}")
     public CommonResponse<TrainDetailVO> getTrain(@PathVariable Long trainId) {
         return CommonResponse.success(trainService.getTrain(trainId));
     }
 
+    @SaCheckRole("routeAdmin")
     @PostMapping("admin/train")
     public CommonResponse<?> addTrain(@Valid @RequestBody AddTrainRequest request){
         trainService.addTrain(request.getName(), request.getRouteId(), request.getTrainType(), request.getDate(), request.getArrivalTimes(), request.getDepartureTimes());
@@ -51,11 +55,13 @@ public class TrainController {
         return CommonResponse.success(trainService.listTrainsAdmin());
     }
 
+    @SaCheckRole("routeAdmin")
     @GetMapping("admin/train/{trainId}")
     public CommonResponse<AdminTrainVO> getTrainAdmin(@PathVariable Long trainId) {
         return CommonResponse.success();
     }
-    
+
+    @SaCheckRole("routeAdmin")
     @PutMapping("admin/train/{trainId}")
     public CommonResponse<?> changeTrain(@PathVariable Long trainId, @Valid @RequestBody AddTrainRequest request) {
         trainService.changeTrain(trainId, request.getName(), request.getRouteId(), request.getTrainType(),
