@@ -16,7 +16,7 @@ public class BusinessExceptionHandler {
     @ExceptionHandler(NotLoginException.class)
     public CommonResponse<?> handleAuthorizeException(NotLoginException e) {
         log.error("Not Login Exception", e);
-        return CommonResponse.error(CommonErrorType.UNAUTHORIZED, e.getMessage());
+        return CommonResponse.error(CommonErrorType.UNAUTHORIZED, "未登录验证");
     }
     
     @ExceptionHandler(NoSuchElementException.class)
