@@ -2,6 +2,7 @@ package org.fffd.l23o6.service;
 
 import java.util.List;
 
+import org.fffd.l23o6.pojo.enum_.OrderStatus;
 import org.fffd.l23o6.pojo.vo.order.OrderVO;
 
 public interface OrderService {
@@ -10,6 +11,9 @@ public interface OrderService {
     OrderVO getOrder(Long id);
 
     void cancelOrder(Long id);
-    void payOrder(Long id, boolean useCredit);
+    String payOrder(Long id, boolean useCredit);
     int getPrice(Long trainId,Long departureStationId,Long arrivalStationId,String seatDescription);
+
+    OrderStatus getStatus(Long id);
+
 }

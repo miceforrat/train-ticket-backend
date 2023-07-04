@@ -8,10 +8,8 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
-import org.fffd.l23o6.pojo.vo.order.CreateOrderRequest;
-import org.fffd.l23o6.pojo.vo.order.OrderIdVO;
-import org.fffd.l23o6.pojo.vo.order.OrderVO;
-import org.fffd.l23o6.pojo.vo.order.PatchOrderRequest;
+import org.fffd.l23o6.pojo.enum_.OrderStatus;
+import org.fffd.l23o6.pojo.vo.order.*;
 import org.fffd.l23o6.service.OrderService;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,12 +41,13 @@ public class OrderController {
     }
 
     @PatchMapping("order/{orderId}")
-    public CommonResponse<?> patchOrder(@PathVariable("orderId") Long orderId, @Valid @RequestBody PatchOrderRequest request) {
+    public CommonResponse<InteractiveOrderInfo> patchOrder(@PathVariable("orderId") Long orderId, @Valid @RequestBody PatchOrderRequest request) {
+        String toRet = "";
 
         switch (request.getStatus()) {
-            case PAID:
+            case PENDING_PAYMENT:
                 //TODO 前端需要获得是否使用积分
-                orderService.payOrder(orderId,request.getPay_by_credit());
+                toRet = orderService.payOrder(orderId,request.getPay_by_credit());
                 break;
             case CANCELLED:
                 orderService.cancelOrder(orderId);
@@ -57,6 +56,8 @@ public class OrderController {
                 throw new BizException(CommonErrorType.ILLEGAL_ARGUMENTS, "Invalid order status.");
         }
 
-        return CommonResponse.success();
+        return CommonResponse.success(new InteractiveOrderInfo(orderService.getStatus(orderId),toRet));
     }
+
+
 }

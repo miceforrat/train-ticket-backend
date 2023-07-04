@@ -16,7 +16,12 @@ import io.swagger.v3.oas.models.info.Info;
 public class L23o6Application {
 
     public static void main(String[] args) {
-        SpringApplication.run(L23o6Application.class, args);
+        new Thread(){
+            @Override
+            public void run() {
+                SpringApplication.run(L23o6Application.class, args);
+            }
+        }.start();
     }
 
     @Bean

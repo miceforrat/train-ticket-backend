@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.alipay.api.AlipayApiException;
 import org.fffd.l23o6.dao.OrderDao;
 import org.fffd.l23o6.dao.RouteDao;
 import org.fffd.l23o6.dao.TrainDao;
@@ -19,6 +20,8 @@ import org.fffd.l23o6.pojo.enum_.TrainType;
 import org.fffd.l23o6.pojo.vo.order.OrderVO;
 import org.fffd.l23o6.service.OrderService;
 import org.fffd.l23o6.util.strategy.credit.CreditStrategy;
+import org.fffd.l23o6.util.strategy.payment.AlipayPaymentStrategy;
+import org.fffd.l23o6.util.strategy.payment.PaymentStrategy;
 import org.fffd.l23o6.util.strategy.train.GSeriesSeatStrategy;
 import org.fffd.l23o6.util.strategy.train.KSeriesSeatStrategy;
 import org.fffd.l23o6.util.strategy.train.TrainSeatStrategy;
@@ -142,7 +145,7 @@ public class OrderServiceImpl implements OrderService {
         orderDao.save(order);
     }
 
-    public void payOrder(Long id, boolean useCredit) {
+    public String payOrder(Long id, boolean useCredit) {
         OrderEntity order = orderDao.findById(id).get();
 
         if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
@@ -150,11 +153,12 @@ public class OrderServiceImpl implements OrderService {
         }
 
         int moneyToPay = order.getPrice();
-        System.err.println(useCredit);
+
         // TODO: use payment strategy to pay!
+        UserEntity user = userDao.findById(order.getUserId()).get();
+
         if(useCredit){
             CreditStrategy creditStrategy = new CreditStrategy();
-            UserEntity user = userDao.findById(order.getUserId()).get();
 
             moneyToPay -= creditStrategy.getReducedMoney(user.getCredit());
             if (moneyToPay < 0){
@@ -167,15 +171,39 @@ public class OrderServiceImpl implements OrderService {
             //System.err.println(moneyToPay);
         }
 
-
+        try {
+            PaymentStrategy paymentStrategy = new AlipayPaymentStrategy();
+            String toRet = paymentStrategy.PayOrder(moneyToPay, String.valueOf(id));
+            int finalMoneyToPay = moneyToPay;
+            new Thread(){
+                @Override
+                public void run() {
+                try {
+                    if (paymentStrategy.checkOrder(String.valueOf(id))) {
+                        UserEntity user = userDao.findById(order.getUserId()).get();
+                        user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), finalMoneyToPay));
+                        userDao.save(user);
+                        order.setStatus(OrderStatus.COMPLETED);
+                        orderDao.save(order);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                }
+            }.start();
+            return toRet;
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+        return null;
         //TODO: 添加付款
 
-        UserEntity user = userDao.findById(order.getUserId()).get();
-        user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), moneyToPay));
-        userDao.save(user);
-        order.setStatus(OrderStatus.COMPLETED);
-        orderDao.save(order);
-        //System.err.println(userDao.findById(order.getUserId()).get().getCredit());
+//        UserEntity user = userDao.findById(order.getUserId()).get();
+//        user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), moneyToPay));
+//        userDao.save(user);
+//        order.setStatus(OrderStatus.COMPLETED);
+//        orderDao.save(order);
+//        //System.err.println(userDao.findById(order.getUserId()).get().getCredit());
     }
 
 
@@ -210,4 +238,8 @@ public class OrderServiceImpl implements OrderService {
         return  price;
     }
 
+    @Override
+    public OrderStatus getStatus(Long id) {
+        return orderDao.findById(id).get().getStatus();
+    }
 }
