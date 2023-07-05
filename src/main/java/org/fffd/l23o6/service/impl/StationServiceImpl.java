@@ -21,6 +21,7 @@ public class StationServiceImpl implements StationService{
     private final StationDao stationDao;
     @Override
     public StationVO getStation(Long stationId){
+
         return StationMapper.INSTANCE.toStationVO(stationDao.findById(stationId).get());
     }
     @Override

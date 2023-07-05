@@ -9,6 +9,7 @@ import com.alipay.api.response.AlipayTradePagePayResponse;
 import com.alipay.api.response.AlipayTradeQueryResponse;
 
 import com.alibaba.fastjson.JSONObject;
+import org.fffd.l23o6.pojo.enum_.OrderStatus;
 
 
 public abstract class PaymentStrategy {
@@ -30,7 +31,7 @@ public abstract class PaymentStrategy {
      * @return             返回是否支付
      * @throws AlipayApiException
      */
-    public abstract boolean checkOrder(String out_trade_no) throws Exception;
+    public abstract OrderStatus checkOrderStatus(String out_trade_no) throws Exception;
 
 
 }

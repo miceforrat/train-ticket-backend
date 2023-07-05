@@ -1,5 +1,7 @@
 package org.fffd.l23o6.service.impl;
 
+import java.net.SocketTimeoutException;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -178,17 +180,31 @@ public class OrderServiceImpl implements OrderService {
             new Thread(){
                 @Override
                 public void run() {
-                try {
-                    if (paymentStrategy.checkOrder(String.valueOf(id))) {
-                        UserEntity user = userDao.findById(order.getUserId()).get();
-                        user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), finalMoneyToPay));
-                        userDao.save(user);
-                        order.setStatus(OrderStatus.COMPLETED);
-                        orderDao.save(order);
+                    try {
+
+                        while (true) {
+                            OrderStatus getStatus = paymentStrategy.checkOrderStatus(String.valueOf(id));
+                            System.err.println(getStatus);
+                            if (getStatus == null || getStatus.equals(OrderStatus.PENDING_PAYMENT)){
+                                continue;
+                            }
+                            if (getStatus.equals(OrderStatus.PAID)) {
+                                UserEntity user = userDao.findById(order.getUserId()).get();
+                                user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), finalMoneyToPay));
+                                userDao.save(user);
+                                order.setStatus(OrderStatus.COMPLETED);
+                                orderDao.save(order);
+                                break;
+                            } else if (getStatus.equals(OrderStatus.CANCELLED)){
+                                cancelOrder(id);
+                            }
+
+                            sleep(1000/ 50);
+                        }
+                    } catch (Exception e) {
+                        cancelOrder(id);
+                        e.printStackTrace();
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
                 }
             }.start();
             return toRet;
