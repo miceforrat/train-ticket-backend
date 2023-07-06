@@ -33,5 +33,5 @@ public abstract class PaymentStrategy {
      */
     public abstract OrderStatus checkOrderStatus(String out_trade_no) throws Exception;
 
-
+    public abstract boolean refundOrder(int money, String id) throws Exception;
 }

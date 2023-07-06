@@ -6,8 +6,10 @@ import com.alipay.api.AlipayClient;
 import com.alipay.api.DefaultAlipayClient;
 import com.alipay.api.request.AlipayTradePagePayRequest;
 import com.alipay.api.request.AlipayTradeQueryRequest;
+import com.alipay.api.request.AlipayTradeRefundRequest;
 import com.alipay.api.response.AlipayTradePagePayResponse;
 import com.alipay.api.response.AlipayTradeQueryResponse;
+import com.alipay.api.response.AlipayTradeRefundResponse;
 import org.fffd.l23o6.pojo.enum_.OrderStatus;
 
 import java.util.HashMap;
@@ -68,17 +70,26 @@ public class AlipayPaymentStrategy extends PaymentStrategy{
                 "}");
         String toRevert = alipayClient.execute(request).getTradeStatus();
         return revertToOrderStatus.getOrDefault(toRevert, OrderStatus.PENDING_PAYMENT);
+    }
 
-//        while (true){
-//            AlipayTradeQueryResponse response = alipayClient.execute(request);
-//            System.err.println(response.getTradeStatus());
-//
-//            if (response.getTradeStatus() == null || response.getTradeStatus().equals("WAIT_BUYER_PAY")){
-//                continue;
-//            }
-//            break;
-//        }
-//        AlipayTradeQueryResponse responseT = alipayClient.execute(request);
-//        return responseT.isSuccess();
+    @Override
+    public boolean refundOrder(int money, String id) throws AlipayApiException {
+
+        AlipayTradeRefundRequest request = new AlipayTradeRefundRequest();
+        JSONObject bizContent = new JSONObject();
+        //bizContent.put("trade_no", id);
+        bizContent.put("out_trade_no", id);
+        bizContent.put("refund_amount", money);
+
+        request.setBizContent(bizContent.toString());
+        AlipayTradeRefundResponse response = alipayClient.execute(request);
+        if (response.isSuccess()) {
+            System.out.println("调用成功");
+            return true;
+        } else {
+            System.out.println("调用失败");
+            return false;
+        }
+
     }
 }

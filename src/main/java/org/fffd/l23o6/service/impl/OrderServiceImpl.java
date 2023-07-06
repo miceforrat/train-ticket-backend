@@ -97,6 +97,14 @@ public class OrderServiceImpl implements OrderService {
         TrainEntity train = trainDao.findById(order.getTrainId()).get();
         RouteEntity route = routeDao.findById(train.getRouteId()).get();
         int startIndex = route.getStationIds().indexOf(order.getDepartureStationId());
+
+        Date departureDate = train.getDepartureTimes().get(startIndex);
+        Date stopCancel = new Date(departureDate.getTime() - 4 * 60 * 60 *1000);
+        if (new Date().after(stopCancel)){
+            order.setStatus(OrderStatus.COMPLETED);
+            orderDao.save(order);
+        }
+        
         int endIndex = route.getStationIds().indexOf(order.getArrivalStationId());
         return OrderVO.builder().id(order.getId()).trainId(order.getTrainId())
                 .seat(order.getSeat()).status(order.getStatus().getText())
@@ -130,6 +138,20 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
+
+        if (order.getStatus() == OrderStatus.PAID){
+            int moneyToRefund = order.getPrice();
+            PaymentStrategy paymentStrategy = new AlipayPaymentStrategy();
+            try {
+                if (!paymentStrategy.refundOrder(moneyToRefund, id.toString())){
+                    return;
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+                return;
+            }
+        }
+
         int seatId = -1;
         if(train.getTrainType()==TrainType.HIGH_SPEED){
             GSeriesStrategyFactory gSeriesStrategyFactory = new GSeriesStrategyFactory();
@@ -142,6 +164,7 @@ public class OrderServiceImpl implements OrderService {
         TrainSeatStrategy.deallocSeatById(startStationIndex, endStationIndex, seatId, train.getSeats());
         train.setUpdatedAt(null);
         trainDao.save(train);
+
         order.setStatus(OrderStatus.CANCELLED);
 
         orderDao.save(order);
@@ -172,6 +195,8 @@ public class OrderServiceImpl implements OrderService {
 
             //System.err.println(moneyToPay);
         }
+        order.setPrice(moneyToPay);
+        orderDao.save(order);
 
         try {
             PaymentStrategy paymentStrategy = new AlipayPaymentStrategy();
@@ -181,10 +206,14 @@ public class OrderServiceImpl implements OrderService {
                 @Override
                 public void run() {
                     try {
-
+                        Date toCheck = new Date(new Date().getTime() + 60 * 1000);
                         while (true) {
                             OrderStatus getStatus = paymentStrategy.checkOrderStatus(String.valueOf(id));
-                            System.err.println(getStatus);
+//                            System.err.println(getStatus);
+                            if (new Date().after(toCheck)){
+                                cancelOrder(id);
+                                break;
+                            }
                             if (getStatus == null || getStatus.equals(OrderStatus.PENDING_PAYMENT)){
                                 continue;
                             }
@@ -192,17 +221,18 @@ public class OrderServiceImpl implements OrderService {
                                 UserEntity user = userDao.findById(order.getUserId()).get();
                                 user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), finalMoneyToPay));
                                 userDao.save(user);
-                                order.setStatus(OrderStatus.COMPLETED);
+                                order.setStatus(OrderStatus.PAID);
                                 orderDao.save(order);
                                 break;
                             } else if (getStatus.equals(OrderStatus.CANCELLED)){
                                 cancelOrder(id);
+                                break;
                             }
 
                             sleep(1000/ 50);
                         }
                     } catch (Exception e) {
-                        cancelOrder(id);
+//                        cancelOrder(id);
                         e.printStackTrace();
                     }
                 }
