@@ -51,4 +51,6 @@ public class OrderEntity {
 
     @UpdateTimestamp
     private Date updatedAt;
+
+    private Integer pay_type;
 }

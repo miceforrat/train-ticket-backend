@@ -40,6 +40,11 @@ public class OrderController {
         return CommonResponse.success(orderService.getOrder(orderId));
     }
 
+    @GetMapping("order/credit/{orderId}")
+    public CommonResponse<PriceByCreditVO> getPriceByCredit(@PathVariable("orderId") Long orderId) {
+        return CommonResponse.success(new PriceByCreditVO(orderService.getPriceBothWay(orderId, true)));
+    }
+
     @PatchMapping("order/{orderId}")
     public CommonResponse<InteractiveOrderInfo> patchOrder(@PathVariable("orderId") Long orderId, @Valid @RequestBody PatchOrderRequest request) {
         String toRet = "";
@@ -47,7 +52,7 @@ public class OrderController {
         switch (request.getStatus()) {
             case PENDING_PAYMENT:
                 //TODO 前端需要获得是否使用积分
-                toRet = orderService.payOrder(orderId,request.getPay_by_credit());
+                toRet = orderService.payOrder(orderId,request.getPay_by_credit(), request.getPay_type());
                 break;
             case CANCELLED:
                 orderService.cancelOrder(orderId);

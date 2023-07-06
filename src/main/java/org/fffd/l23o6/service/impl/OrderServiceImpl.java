@@ -18,12 +18,14 @@ import org.fffd.l23o6.exception.BizError;
 import org.fffd.l23o6.pojo.entity.OrderEntity;
 import org.fffd.l23o6.pojo.entity.RouteEntity;
 import org.fffd.l23o6.pojo.entity.TrainEntity;
+import org.fffd.l23o6.pojo.enum_.PayType;
 import org.fffd.l23o6.pojo.enum_.TrainType;
 import org.fffd.l23o6.pojo.vo.order.OrderVO;
 import org.fffd.l23o6.service.OrderService;
 import org.fffd.l23o6.util.strategy.credit.CreditStrategy;
 import org.fffd.l23o6.util.strategy.payment.AlipayPaymentStrategy;
 import org.fffd.l23o6.util.strategy.payment.PaymentStrategy;
+import org.fffd.l23o6.util.strategy.payment.WeChatPaymentStrategy;
 import org.fffd.l23o6.util.strategy.train.GSeriesSeatStrategy;
 import org.fffd.l23o6.util.strategy.train.KSeriesSeatStrategy;
 import org.fffd.l23o6.util.strategy.train.TrainSeatStrategy;
@@ -64,7 +66,7 @@ public class OrderServiceImpl implements OrderService {
         }
         OrderEntity order = OrderEntity.builder().trainId(trainId).userId(userId).seat(seat)
                 .status(OrderStatus.PENDING_PAYMENT).arrivalStationId(toStationId).departureStationId(fromStationId)
-                .price(getPrice(trainId,fromStationId,toStationId,seat))
+                .price(getPrice(trainId,fromStationId,toStationId,seat)).pay_type(PayType.ALIPAY_PAY.toInteger())
                 .build();
         train.setUpdatedAt(null);// force it to update
         trainDao.save(train);
@@ -104,7 +106,7 @@ public class OrderServiceImpl implements OrderService {
             order.setStatus(OrderStatus.COMPLETED);
             orderDao.save(order);
         }
-        
+
         int endIndex = route.getStationIds().indexOf(order.getArrivalStationId());
         return OrderVO.builder().id(order.getId()).trainId(order.getTrainId())
                 .seat(order.getSeat()).status(order.getStatus().getText())
@@ -141,7 +143,8 @@ public class OrderServiceImpl implements OrderService {
 
         if (order.getStatus() == OrderStatus.PAID){
             int moneyToRefund = order.getPrice();
-            PaymentStrategy paymentStrategy = new AlipayPaymentStrategy();
+            PaymentStrategy paymentStrategy = order.getPay_type().equals(PayType.WECHAT_PAY.toInteger()) ? new WeChatPaymentStrategy()
+                    :new AlipayPaymentStrategy();
             try {
                 if (!paymentStrategy.refundOrder(moneyToRefund, id.toString())){
                     return;
@@ -170,25 +173,20 @@ public class OrderServiceImpl implements OrderService {
         orderDao.save(order);
     }
 
-    public String payOrder(Long id, boolean useCredit) {
+    public String payOrder(Long id, boolean useCredit, PayType payType) {
         OrderEntity order = orderDao.findById(id).get();
 
         if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
             throw new BizException(BizError.ILLEAGAL_ORDER_STATUS);
         }
 
-        int moneyToPay = order.getPrice();
+        order.setPay_type(payType.toInteger());
 
+        int moneyToPay = getPriceBothWay(id, useCredit);
         // TODO: use payment strategy to pay!
         UserEntity user = userDao.findById(order.getUserId()).get();
 
         if(useCredit){
-            CreditStrategy creditStrategy = new CreditStrategy();
-
-            moneyToPay -= creditStrategy.getReducedMoney(user.getCredit());
-            if (moneyToPay < 0){
-                moneyToPay = 0;
-            }
             //System.err.println(disCount);
             user.setCredit(0);
             userDao.save(user);
@@ -198,8 +196,11 @@ public class OrderServiceImpl implements OrderService {
         order.setPrice(moneyToPay);
         orderDao.save(order);
 
+        PaymentStrategy paymentStrategy = payType.equals(PayType.WECHAT_PAY) ? new WeChatPaymentStrategy()
+                : new AlipayPaymentStrategy();
+
         try {
-            PaymentStrategy paymentStrategy = new AlipayPaymentStrategy();
+
             String toRet = paymentStrategy.PayOrder(moneyToPay, String.valueOf(id));
             int finalMoneyToPay = moneyToPay;
             new Thread(){
@@ -222,6 +223,7 @@ public class OrderServiceImpl implements OrderService {
                                 user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), finalMoneyToPay));
                                 userDao.save(user);
                                 order.setStatus(OrderStatus.PAID);
+                                order.setUpdatedAt(null);
                                 orderDao.save(order);
                                 break;
                             } else if (getStatus.equals(OrderStatus.CANCELLED)){
@@ -287,5 +289,24 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderStatus getStatus(Long id) {
         return orderDao.findById(id).get().getStatus();
+    }
+
+    @Override
+    public int getPriceBothWay(Long id, boolean ifCredit) {
+        OrderEntity order = orderDao.findById(id).get();
+        UserEntity user = userDao.findById(order.getUserId()).get();
+        int moneyToPay = order.getPrice();
+        if(ifCredit){
+            CreditStrategy creditStrategy = new CreditStrategy();
+
+            moneyToPay -= creditStrategy.getReducedMoney(user.getCredit());
+            if (moneyToPay < 0){
+                moneyToPay = 0;
+            }
+            //System.err.println(disCount);
+
+            //System.err.println(moneyToPay);
+        }
+        return moneyToPay;
     }
 }
