@@ -106,7 +106,7 @@ public class OrderServiceImpl implements OrderService {
         Date departureDate = train.getDepartureTimes().get(startIndex);
         UserEntity user = userDao.findById(order.getUserId()).get();
         Date stopCancel = new Date(departureDate.getTime() - ConstVals.completeRestrict);
-        if (new Date().after(stopCancel)){
+        if (order.getStatus().equals(OrderStatus.PAID) && (new Date().after(stopCancel))){
             order.setStatus(OrderStatus.COMPLETED);
             user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), order.getPrice()));
             userDao.save(user);
