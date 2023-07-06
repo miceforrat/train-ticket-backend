@@ -61,4 +61,8 @@ public class CreditStrategy {
     public int getNewCredit(int before, int truePay){
         return before+ truePay * moneyToCreditRate;
     }
+
+    public int getDeltaCredit(int truePay){
+        return truePay * moneyToCreditRate;
+    }
 }

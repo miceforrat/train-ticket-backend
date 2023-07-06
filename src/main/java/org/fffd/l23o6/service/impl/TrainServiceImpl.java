@@ -11,6 +11,7 @@ import org.fffd.l23o6.mapper.TrainMapper;
 import org.fffd.l23o6.pojo.entity.RouteEntity;
 import org.fffd.l23o6.pojo.entity.TrainEntity;
 import org.fffd.l23o6.pojo.enum_.TrainType;
+import org.fffd.l23o6.pojo.statics.ConstVals;
 import org.fffd.l23o6.pojo.vo.train.AdminTrainVO;
 import org.fffd.l23o6.pojo.vo.train.TicketInfo;
 import org.fffd.l23o6.pojo.vo.train.TrainVO;
@@ -78,7 +79,8 @@ public class TrainServiceImpl implements TrainService {
                     if (stationIdHere == startStationId){
                         startTimestamp = i ;
                         departureTime = departureTimes.get(i);
-                        if (departureTime.before(dayStart) || departureTime.after(dayEnd)){
+                        Date stopCancel = new Date(departureTime.getTime() - ConstVals.completeRestrict);
+                        if (departureTime.before(dayStart) || departureTime.after(dayEnd) || new Date().after(stopCancel)){
                             break;
                         }
                     }

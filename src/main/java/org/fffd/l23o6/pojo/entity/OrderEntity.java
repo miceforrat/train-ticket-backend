@@ -52,5 +52,11 @@ public class OrderEntity {
     @UpdateTimestamp
     private Date updatedAt;
 
+    @NotNull
     private Integer pay_type;
+
+    @NotNull
+    private String stamp_with_info;
+
+
 }

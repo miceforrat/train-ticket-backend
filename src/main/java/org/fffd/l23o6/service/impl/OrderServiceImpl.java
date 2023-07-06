@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import com.alipay.api.AlipayApiException;
+import org.apache.catalina.User;
 import org.fffd.l23o6.dao.OrderDao;
 import org.fffd.l23o6.dao.RouteDao;
 import org.fffd.l23o6.dao.TrainDao;
@@ -20,6 +21,7 @@ import org.fffd.l23o6.pojo.entity.RouteEntity;
 import org.fffd.l23o6.pojo.entity.TrainEntity;
 import org.fffd.l23o6.pojo.enum_.PayType;
 import org.fffd.l23o6.pojo.enum_.TrainType;
+import org.fffd.l23o6.pojo.statics.ConstVals;
 import org.fffd.l23o6.pojo.vo.order.OrderVO;
 import org.fffd.l23o6.service.OrderService;
 import org.fffd.l23o6.util.strategy.credit.CreditStrategy;
@@ -67,6 +69,7 @@ public class OrderServiceImpl implements OrderService {
         OrderEntity order = OrderEntity.builder().trainId(trainId).userId(userId).seat(seat)
                 .status(OrderStatus.PENDING_PAYMENT).arrivalStationId(toStationId).departureStationId(fromStationId)
                 .price(getPrice(trainId,fromStationId,toStationId,seat)).pay_type(PayType.ALIPAY_PAY.toInteger())
+                .stamp_with_info(new Date().getTime() + userId.toString() + trainId)
                 .build();
         train.setUpdatedAt(null);// force it to update
         trainDao.save(train);
@@ -101,9 +104,12 @@ public class OrderServiceImpl implements OrderService {
         int startIndex = route.getStationIds().indexOf(order.getDepartureStationId());
 
         Date departureDate = train.getDepartureTimes().get(startIndex);
-        Date stopCancel = new Date(departureDate.getTime() - 4 * 60 * 60 *1000);
+        UserEntity user = userDao.findById(order.getUserId()).get();
+        Date stopCancel = new Date(departureDate.getTime() - ConstVals.completeRestrict);
         if (new Date().after(stopCancel)){
             order.setStatus(OrderStatus.COMPLETED);
+            user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), order.getPrice()));
+            userDao.save(user);
             orderDao.save(order);
         }
 
@@ -146,7 +152,7 @@ public class OrderServiceImpl implements OrderService {
             PaymentStrategy paymentStrategy = order.getPay_type().equals(PayType.WECHAT_PAY.toInteger()) ? new WeChatPaymentStrategy()
                     :new AlipayPaymentStrategy();
             try {
-                if (!paymentStrategy.refundOrder(moneyToRefund, id.toString())){
+                if (!paymentStrategy.refundOrder(moneyToRefund, order.getStamp_with_info())){
                     return;
                 }
             }catch (Exception e){
@@ -201,15 +207,14 @@ public class OrderServiceImpl implements OrderService {
 
         try {
 
-            String toRet = paymentStrategy.PayOrder(moneyToPay, String.valueOf(id));
-            int finalMoneyToPay = moneyToPay;
+            String toRet = paymentStrategy.PayOrder(moneyToPay, order.getStamp_with_info());
             new Thread(){
                 @Override
                 public void run() {
                     try {
                         Date toCheck = new Date(new Date().getTime() + 60 * 1000);
                         while (true) {
-                            OrderStatus getStatus = paymentStrategy.checkOrderStatus(String.valueOf(id));
+                            OrderStatus getStatus = paymentStrategy.checkOrderStatus(order.getStamp_with_info());
 //                            System.err.println(getStatus);
                             if (new Date().after(toCheck)){
                                 cancelOrder(id);
@@ -219,9 +224,6 @@ public class OrderServiceImpl implements OrderService {
                                 continue;
                             }
                             if (getStatus.equals(OrderStatus.PAID)) {
-                                UserEntity user = userDao.findById(order.getUserId()).get();
-                                user.setCredit(new CreditStrategy().getNewCredit(user.getCredit(), finalMoneyToPay));
-                                userDao.save(user);
                                 order.setStatus(OrderStatus.PAID);
                                 order.setUpdatedAt(null);
                                 orderDao.save(order);
