@@ -79,7 +79,7 @@ public class TrainServiceImpl implements TrainService {
                     if (stationIdHere == startStationId){
                         startTimestamp = i ;
                         departureTime = departureTimes.get(i);
-                        Date stopCancel = new Date(departureTime.getTime() - ConstVals.completeRestrict);
+                        Date stopCancel = new Date(departureTime.getTime() - ConstVals.SEARCH_RESTRICT);
                         if (departureTime.before(dayStart) || departureTime.after(dayEnd) || new Date().after(stopCancel)){
                             break;
                         }
